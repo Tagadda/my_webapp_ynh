@@ -56,12 +56,22 @@ ynh_app_config_apply() {
 
     if [ "${changed[phpversion]}" == "true" ] && [ "$phpversion" == "none" ]
     then
-        # FIXME: This miserably fails because the setting phpversion get his 
-        # new value before ynh_app_config_apply gets called, so 
-        # ynh_remove_fpm_config try to remove the new not-yet-existent version.
+        ynh_app_setting_set --app=$app --key=phpversion --value=$old_phpversion
+        ynh_print_info --message="Removing PHP dependency..."
         ynh_remove_fpm_config
+        ynh_remove_app_dependencies
+        ynh_app_setting_delete --app=$app --key=phpversion
     elif [ "${changed[phpversion]}" == "true" ]
     then
+        new_phpversion=$phpversion
+        ynh_app_setting_set --app=$app --key=phpversion --value=$old_phpversion
+        ynh_print_info --message="Removing old PHP dependency..."
+        ynh_remove_fpm_config
+        ynh_remove_app_dependencies
+        ynh_print_info --message="Adding new PHP dependency..."
+        declare -g "phpversion"="$new_phpversion"
+        ynh_app_setting_set --app=$app --key=phpversion --value=$phpversion
+        ynh_install_app_dependencies "php${phpversion}-fpm"
         ynh_add_fpm_config --usage=low --footprint=low --phpversion=$phpversion
     fi
 
